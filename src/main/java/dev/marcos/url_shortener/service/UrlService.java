@@ -3,6 +3,7 @@ package dev.marcos.url_shortener.service;
 import dev.marcos.url_shortener.dto.CreateShortUrlRequest;
 import dev.marcos.url_shortener.entity.ShortUrl;
 import dev.marcos.url_shortener.exception.NotFoundException;
+import dev.marcos.url_shortener.exception.UrlExpiredException;
 import dev.marcos.url_shortener.repository.ShortUrlRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,20 +25,21 @@ public class UrlService {
     public ShortUrl save(CreateShortUrlRequest req) {
         String target = normalizeUrl(req.url());
         String shortCode = shortCodeService.generateUniqueShortCode();
-
-        LocalDateTime expiresAt = null;
-        if (req.expiryDays() != null && req.expiryDays() > 0) {
-            expiresAt = LocalDateTime.now().plusDays(req.expiryDays());
-        }
+        LocalDateTime expiresAt = LocalDateTime.now().plusDays(1);
 
         ShortUrl shortUrl = new ShortUrl(target, shortCode, expiresAt);
         return shortUrlRepository.save(shortUrl);
     }
 
     public ShortUrl findByCode(String shortCode) {
-        return shortUrlRepository.findByShortCode(shortCode)
-                .filter(url -> url.getExpiresAt() == null || url.getExpiresAt().isAfter(LocalDateTime.now()))
-                .orElseThrow(() -> new NotFoundException("URL not found"));
+        ShortUrl url = shortUrlRepository.findByShortCode(shortCode)
+                .orElseThrow(() -> new NotFoundException("The URL doesn't exist"));
+
+        if (!url.getExpiresAt().isAfter(LocalDateTime.now())) {
+            throw new UrlExpiredException("The URL is expired");
+        }
+
+        return url;
     }
 
     @Transactional

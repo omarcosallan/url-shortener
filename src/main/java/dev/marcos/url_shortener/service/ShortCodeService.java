@@ -13,12 +13,10 @@ public class ShortCodeService {
     private final ShortUrlRepository shortUrlRepository;
 
     public String generateUniqueShortCode() {
-        for (int i = 0; i < 10; i++) {
-            String candidate = Base62.randomCode(DEFAULT_LENGTH);
-            if (!shortUrlRepository.existsByShortCode(candidate)) {
-                return candidate;
-            }
-        }
-        throw new IllegalStateException("Failed to generate unique short code");
+        String candidate;
+        do {
+            candidate = Base62.randomCode(DEFAULT_LENGTH);
+        } while(shortUrlRepository.existsByShortCode(candidate));
+        return candidate;
     }
 }
